@@ -1,1 +1,77 @@
+### this setups various applets to act similar to juniper commit confimed
+### you can use the command rollbackin1, rollbackin5 or rollbackin10
+### and cancel with rollbackcancel
+
+
+conf t
+
+event manager applet rollbackin1
+  event none
+  action 01.0 cli no checkpoint stable
+  action 01.2 cli checkpoint stable  
+  action 10.1 counter name ROLLBACK_COUNTER value 1 op set
+  !action 20.2 syslog priority notifications msg COUNTER SET TO 1
+  
+event manager applet rollbackin5
+  event none
+  action 01.0 cli no checkpoint stable
+  action 01.2 cli checkpoint stable  
+  action 10.1 counter name ROLLBACK_COUNTER value 5 op set
+  !action 20.2 syslog priority notifications msg COUNTER SET TO 5
+  
+event manager applet rollbackin10
+  event none
+  action 01.0 cli no checkpoint stable
+  action 01.2 cli checkpoint stable  
+  action 10.1 counter name ROLLBACK_COUNTER value 10 op set
+  !action 20.2 syslog priority notifications msg COUNTER SET TO 10
+    
+event manager applet rollbacktimer
+  description "start countdown of ROLLBACK_COUNTER"
+  event counter tag ONE name ROLLBACK_COUNTER entry-val 0 entry-op gt
+  event counter tag TWO name ROLLBACK_COUNTER entry-val 20 entry-op lt
+  TAg ONE and TWO happens 1 in 3
+  action 10.0 syslog priority notifications msg MINUTES TO ROLLBACK = $counter_value 
+  action 10.1 cli sleep 60
+  action 10.2 counter name ROLLBACK_COUNTER value 1 op dec 
+ 
+event manager applet dorollback
+  event counter name ROLLBACK_COUNTER entry-val 0 entry-op eq
+  action 10.0 syslog priority notifications msg STARTING ROLLBACK  
+  action 01.1 cli rollback running-config checkpoint stable best-effort
+  action 20.2 syslog priority notifications msg ROLLBACK EXECUTED
+  action 21.2 counter name ROLLBACK_COUNTER value -1 op set
+  
+event manager applet rollbackcancel
+  event none
+  action 10.1 counter name ROLLBACK_COUNTER value 999 op set
+  action 20.2 syslog priority notifications msg ROLLBACK STOPED
+
+
+cli alias name rollbackin1 event manager run rollbackin1
+cli alias name rollbackin5 event manager run rollbackin5
+cli alias name rollbackin10 event manager run rollbackin10
+cli alias name rollbackcancel event manager run rollbackcancel
+
+end
+
+
+######## THis removes the configuration
+
+
+no  event manager applet rollbackin1
+no  event manager applet rollbackin5
+no  event manager applet rollbackin10
+no  event manager applet rollbacktimer
+no  event manager applet dorollback
+no  event manager applet rollbackcancel
+
+
+
+no cli alias name rollbackin1 event manager run rollbackin1
+no cli alias name rollbackin5 event manager run rollbackin5
+no cli alias name rollbackin10 event manager run rollbackin10
+no cli alias name rollbackcancel event manager run rollbackcancel
+  
+
 
